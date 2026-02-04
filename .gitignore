@@ -1,9 +1,10 @@
-# Data files (keep local)
-*.txt
+# Exclude local copy folder
+Copy of data/
+
+# Large slide images
 *.svs
 
 # Common large/derived artifacts
-Copy of data/
 data/
 outputs/
 __pycache__/
