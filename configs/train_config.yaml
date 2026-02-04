@@ -1,0 +1,21 @@
+learning_rate: 0.0001
+encoder_lr_mult: 0.1
+weight_decay: 0.00001
+batch_size: 16
+max_epochs: 100
+warmup_epochs: 5
+patience: 15
+grad_clip: 1.0
+accumulate_grad_batches: 1
+seed: 42
+num_workers: 4
+pin_memory: true
+early_stopping:
+  monitor: "val_c_index"
+  mode: "max"
+  patience: 15
+model_checkpoint:
+  monitor: "val_c_index"
+  mode: "max"
+  save_top_k: 1
+  filename: "mosaic-{epoch:02d}-{val_c_index:.2f}"

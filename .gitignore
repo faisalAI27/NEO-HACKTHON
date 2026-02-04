@@ -1,27 +1,77 @@
+# ==============================================================================
+# MOSAIC Project .gitignore
+# ==============================================================================
+
 # Exclude local copy folder
 Copy of data/
 
-# Large slide images
+# Large slide images (can be 1-5GB each)
 *.svs
+*.ndpi
+*.tif
+*.tiff
+*.mrxs
 
-# Common large/derived artifacts
+# Data directories
 data/
 outputs/
-__pycache__/
-*.pyc
-*.pkl
-*.h5
-*.hdf5
+results/
+
+# Model checkpoints (large files)
+checkpoints/
+*.ckpt
 *.pt
 *.pth
-*.ckpt
 
-# Environment
+# Cached/derived files
+__pycache__/
+*.pyc
+*.pyo
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.npy
+*.npz
+
+# Python virtual environments
 .venv/
 venv/
+env/
 .env
+*.egg-info/
 
-# OS/editor
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log
+lightning_logs/
+wandb/
+mlruns/
+
+# OS/editor files
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js (frontend)
+mosaic-dashboard/node_modules/
+mosaic-dashboard/dist/
+mosaic-dashboard/.vite/
+
+# Docker
+*.tar
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

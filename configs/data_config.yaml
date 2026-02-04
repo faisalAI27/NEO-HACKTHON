@@ -1,0 +1,12 @@
+max_tiles: 4000
+tile_size: 256
+target_mpp: 0.5
+n_folds: 5
+seed: 42
+data_root: "data/processed"
+raw_data_root: "data/raw"
+splits_file: "data/splits/cv_splits.json"
+normalization:
+  rna: "standard"
+  methylation: "standard"
+  clinical: "minmax"

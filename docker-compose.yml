@@ -1,0 +1,109 @@
+# MOSAIC Docker Compose Configuration
+# Multi-Omics Survival Analysis with Interpretable Cross-modal Attention
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Backend API Service (FastAPI + PyTorch)
+  # ===========================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: mosaic-backend
+    restart: unless-stopped
+    
+    # GPU Support - Uncomment for NVIDIA GPU
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    ports:
+      - "8000:8000"
+    
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MOSAIC_CHECKPOINT_DIR=/app/checkpoints
+      - MOSAIC_WSI_DIR=/app/data/raw/svs
+      - MOSAIC_FOLD=0
+      # GPU memory fraction (optional)
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    
+    volumes:
+      # Mount data directories (read-only for raw data)
+      - ./data/raw:/app/data/raw:ro
+      - ./data/processed:/app/data/processed:ro
+      # Mount checkpoints (read-only)
+      - ./checkpoints:/app/checkpoints:ro
+      # Mount outputs for predictions (read-write)
+      - ./outputs:/app/outputs:rw
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    networks:
+      - mosaic-network
+
+  # ===========================================================================
+  # Frontend Dashboard (React + Nginx)
+  # ===========================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    container_name: mosaic-frontend
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+    
+    depends_on:
+      backend:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    networks:
+      - mosaic-network
+
+  # ===========================================================================
+  # (Optional) Redis Cache for WSI Tiles
+  # ===========================================================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: mosaic-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - mosaic-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  mosaic-network:
+    driver: bridge
+    name: mosaic-network
+
+# =============================================================================
+# Volumes (for optional services)
+# =============================================================================
+# volumes:
+#   redis-data:

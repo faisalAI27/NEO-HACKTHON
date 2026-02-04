@@ -1,0 +1,51 @@
+model:
+  data_dims:
+    wsi: 1024
+    rna: 7923
+    methylation: 10057
+    mutations: 1500
+    drivers: 15
+    clinical: 15
+  
+  encoders:
+    # Common embedding dimension (embed_dim)
+    wsi_out_dim: 256
+    rna_out_dim: 256
+    meth_out_dim: 256
+    mut_out_dim: 256
+    clin_out_dim: 256
+    
+    # Encoder specific configs
+    rna:
+      hidden_dim: 512
+      num_layers: 2
+      dropout: 0.3
+    
+    wsi:
+      hidden_dim: 512
+      dropout: 0.25
+      
+    methylation:
+      hidden_dim: 512
+      dropout: 0.3
+      
+    mutations:
+      hidden_dim: 512
+      
+    clinical:
+      hidden_dim: 512
+
+  fusion:
+    type: "perceiver"
+    latent_dim: 256
+    num_latents: 16
+    depth: 2
+    num_heads: 8
+    dropout: 0.1
+    
+training:
+  batch_size: 32
+  lr: 0.0001
+  max_epochs: 100
+  weight_decay: 0.00001
+  patience: 10

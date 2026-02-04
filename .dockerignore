@@ -1,0 +1,80 @@
+# Docker-specific ignore file
+# Prevents unnecessary files from being included in build context
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.eggs
+*.egg-info
+.installed.cfg
+*.egg
+.mypy_cache
+.pytest_cache
+.coverage
+htmlcov
+
+# Virtual environments
+venv
+.venv
+env
+.env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Node.js (frontend source - built separately)
+mosaic-dashboard/node_modules
+mosaic-dashboard/.next
+
+# Data files (mounted as volumes)
+data/raw/*.svs
+data/raw/*.tif
+data/raw/*.tiff
+*.h5
+*.hdf5
+*.npy
+*.npz
+
+# Large files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Logs
+*.log
+logs/
+lightning_logs/
+
+# Build artifacts
+dist
+build
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Test files
+tests
+test_*
+
+# Temporary files
+tmp
+temp
+*.tmp
