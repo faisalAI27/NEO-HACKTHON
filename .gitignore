@@ -1,0 +1,26 @@
+# Data files (keep local)
+*.txt
+*.svs
+
+# Common large/derived artifacts
+Copy of data/
+data/
+outputs/
+__pycache__/
+*.pyc
+*.pkl
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+
+# Environment
+.venv/
+venv/
+.env
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
