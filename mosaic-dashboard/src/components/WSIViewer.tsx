@@ -19,6 +19,7 @@ import { getSlideList, getDziUrl } from '../api'
 interface WSIViewerProps {
   slideId?: string | null
   attentionOverlay?: number[][] | null
+  attentionHeatmap?: Record<string, number> | null
 }
 
 export default function WSIViewer({ slideId, attentionOverlay }: WSIViewerProps) {
