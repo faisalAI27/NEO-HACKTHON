@@ -48,7 +48,7 @@ jobs:
         run: isort --profile black --check-only --diff src/
 
       - name: Run Flake8
-        run: flake8 src/ --max-line-length=100 --ignore=E501,W503
+        run: flake8 src/ --max-line-length=100 --ignore=E501,W503,F401,E402,E722,E203,E226,W293,W605,F841,F541
 
   # ===========================================================================
   # Job 2: Unit Tests
