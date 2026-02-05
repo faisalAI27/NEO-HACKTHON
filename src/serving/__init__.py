@@ -5,9 +5,9 @@ from .model_service import MOSAICModelService
 from .schemas import ClinicalData, OmicsData, PredictionRequest, PredictionResponse
 
 __all__ = [
-    'MOSAICModelService',
-    'ClinicalData',
-    'OmicsData', 
-    'PredictionRequest',
-    'PredictionResponse'
+    "MOSAICModelService",
+    "ClinicalData",
+    "OmicsData",
+    "PredictionRequest",
+    "PredictionResponse",
 ]
