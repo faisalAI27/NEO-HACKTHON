@@ -19,13 +19,21 @@ export default function ResultsSummary({ prediction }: ResultsSummaryProps) {
   const colors = riskColors[riskGroup as keyof typeof riskColors] || riskColors.medium;
   
   // Calculate survival probabilities at key timepoints
-  const survivalProbs = prediction.survival_probabilities;
+  // Handle both survival_probability and survival_probabilities
+  const survivalProbs = prediction.survival_probabilities || prediction.survival_probability || {};
   const timepoints = [
-    { time: '1 Year', key: '365' },
-    { time: '2 Years', key: '730' },
-    { time: '3 Years', key: '1095' },
-    { time: '5 Years', key: '1825' },
+    { time: '1 Year', key: '365', altKey: '12_months' },
+    { time: '2 Years', key: '730', altKey: '24_months' },
+    { time: '3 Years', key: '1095', altKey: '36_months' },
+    { time: '5 Years', key: '1825', altKey: '60_months' },
   ];
+  
+  // Helper to get probability value from either key format
+  const getProb = (tp: { key: string; altKey: string }): number => {
+    return (survivalProbs as Record<string, number>)[tp.key] 
+      || (survivalProbs as Record<string, number>)[tp.altKey] 
+      || 0;
+  };
 
   return (
     <Box sx={{ p: 2 }}>
@@ -99,7 +107,7 @@ export default function ResultsSummary({ prediction }: ResultsSummaryProps) {
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {timepoints.map((tp, index) => {
-                const prob = survivalProbs[tp.key] || 0;
+                const prob = getProb(tp);
                 const percentage = prob * 100;
                 return (
                   <motion.div

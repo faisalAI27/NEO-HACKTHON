@@ -36,7 +36,7 @@ import {
   Biotech,
   ChevronLeft,
 } from '@mui/icons-material';
-import PatientUploadForm from '../components/PatientUploadForm';
+import PatientInputForm from '../components/PatientInputForm';
 import SurvivalCurve from '../components/SurvivalCurve';
 import WSIViewer from '../components/WSIViewer';
 import ExplainabilityDashboard from '../components/ExplainabilityDashboard';
@@ -284,7 +284,7 @@ export default function DashboardPage({ onBack }: DashboardPageProps) {
             <Grid container spacing={3}>
               <Grid item xs={12} lg={8}>
                 <Paper sx={{ p: 3 }}>
-                  <PatientUploadForm
+                  <PatientInputForm
                     onPredictionComplete={handlePredictionComplete}
                     onSlideSelected={setSelectedSlideId}
                   />
@@ -293,27 +293,27 @@ export default function DashboardPage({ onBack }: DashboardPageProps) {
               <Grid item xs={12} lg={4}>
                 <Paper sx={{ p: 3, mb: 3 }}>
                   <Typography variant="h6" gutterBottom>
-                    Quick Start Guide
+                    Input Guide
                   </Typography>
-                  <Box component="ol" sx={{ pl: 2, '& li': { mb: 1.5 } }}>
+                  <Box component="ul" sx={{ pl: 2, '& li': { mb: 1.5 } }}>
                     <li>
                       <Typography variant="body2" color="text.secondary">
-                        Upload whole-slide image (SVS format)
+                        <strong>Pathology:</strong> Upload .svs whole-slide image
                       </Typography>
                     </li>
                     <li>
                       <Typography variant="body2" color="text.secondary">
-                        Enter clinical data (age, stage, grade)
+                        <strong>Demographics:</strong> Age, gender, ethnicity
                       </Typography>
                     </li>
                     <li>
                       <Typography variant="body2" color="text.secondary">
-                        Optionally upload omics data files
+                        <strong>Clinical:</strong> Stage, grade, HPV status, smoking
                       </Typography>
                     </li>
                     <li>
                       <Typography variant="body2" color="text.secondary">
-                        Click "Generate Prediction" to analyze
+                        <strong>Mutations:</strong> Select driver gene mutations
                       </Typography>
                     </li>
                   </Box>
@@ -335,7 +335,7 @@ export default function DashboardPage({ onBack }: DashboardPageProps) {
                     🎯 Try Demo Mode
                   </Typography>
                   <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    Skip data upload and explore the dashboard with sample predictions.
+                    Skip data entry and explore the dashboard with sample predictions.
                   </Typography>
                 </Paper>
               </Grid>
@@ -356,28 +356,28 @@ export default function DashboardPage({ onBack }: DashboardPageProps) {
                         </Typography>
                         <Typography
                           variant="h2"
-                          color={demoResult.risk_group === 'high' ? 'error.main' : 'success.main'}
+                          color={(demoResult.risk_group || 'medium') === 'high' ? 'error.main' : 'success.main'}
                           fontWeight={700}
                         >
-                          {demoResult.risk_score.toFixed(2)}
+                          {(demoResult.risk_score ?? 0).toFixed(2)}
                         </Typography>
                         <Chip
-                          label={demoResult.risk_group.toUpperCase() + ' RISK'}
-                          color={demoResult.risk_group === 'high' ? 'error' : 'success'}
+                          label={(demoResult.risk_group || 'medium').toUpperCase() + ' RISK'}
+                          color={(demoResult.risk_group || 'medium') === 'high' ? 'error' : 'success'}
                           sx={{ mt: 1 }}
                         />
                       </Box>
                     </Grid>
                     <Grid item xs={12} md={8}>
                       <Grid container spacing={2}>
-                        {Object.entries(demoResult.survival_probability).map(([time, prob]) => (
+                        {Object.entries(demoResult.survival_probability || {}).map(([time, prob]) => (
                           <Grid item xs={6} sm={3} key={time}>
                             <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', textAlign: 'center' }}>
                               <Typography variant="h4" color="primary.main" fontWeight={600}>
-                                {(prob * 100).toFixed(0)}%
+                                {((prob as number) * 100).toFixed(0)}%
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {time.replace('_', ' ')}
+                                {String(time).includes('_') ? String(time).replace('_', ' ') : `${Math.round(Number(time) / 30)} months`}
                               </Typography>
                             </Paper>
                           </Grid>
@@ -395,12 +395,22 @@ export default function DashboardPage({ onBack }: DashboardPageProps) {
                     Kaplan-Meier Survival Curve
                   </Typography>
                   <SurvivalCurve
-                    data={Object.entries(demoResult.survival_probability).map(([time, prob]) => ({
-                      time: parseInt(time.split('_')[0]),
-                      probability: prob,
-                      lower: prob - 0.08,
-                      upper: prob + 0.08,
-                    }))}
+                    data={Object.entries(demoResult.survival_probability || {}).map(([time, prob]) => {
+                      // Handle both "12_months" format and numeric "365" format
+                      let timeValue: number;
+                      if (time.includes('_')) {
+                        timeValue = parseInt(time.split('_')[0]);
+                      } else {
+                        // Convert days to months for display
+                        timeValue = Math.round(parseInt(time) / 30);
+                      }
+                      return {
+                        time: timeValue,
+                        probability: prob as number,
+                        lower: (prob as number) - 0.08,
+                        upper: (prob as number) + 0.08,
+                      };
+                    }).sort((a, b) => a.time - b.time)}
                     patientId={demoResult.patient_id}
                   />
                 </Paper>
@@ -413,7 +423,7 @@ export default function DashboardPage({ onBack }: DashboardPageProps) {
                     Modality Contributions
                   </Typography>
                   <ExplainabilityDashboard
-                    attentionWeights={demoResult.attention_weights}
+                    attentionWeights={demoResult.attention_weights || {}}
                     geneImportance={demoResult.gene_importance || []}
                   />
                 </Paper>
@@ -426,27 +436,35 @@ export default function DashboardPage({ onBack }: DashboardPageProps) {
                     Top Contributing Genes
                   </Typography>
                   <Grid container spacing={2}>
-                    {demoResult.gene_importance?.map((gene, idx) => (
-                      <Grid item xs={6} sm={4} md={3} lg={1.5} key={gene.gene}>
-                        <Paper
-                          elevation={0}
-                          sx={{
-                            p: 2,
-                            textAlign: 'center',
-                            bgcolor: idx < 3 ? 'primary.50' : 'background.default',
-                            border: idx < 3 ? 1 : 0,
-                            borderColor: 'primary.200',
-                          }}
-                        >
-                          <Typography variant="subtitle2" fontWeight={600}>
-                            {gene.gene}
-                          </Typography>
-                          <Typography variant="h6" color="primary.main">
-                            {(gene.importance * 100).toFixed(0)}%
-                          </Typography>
-                        </Paper>
+                    {(demoResult.gene_importance && demoResult.gene_importance.length > 0) ? (
+                      demoResult.gene_importance.map((gene, idx) => (
+                        <Grid item xs={6} sm={4} md={3} lg={1.5} key={gene.gene}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 2,
+                              textAlign: 'center',
+                              bgcolor: idx < 3 ? 'primary.50' : 'background.default',
+                              border: idx < 3 ? 1 : 0,
+                              borderColor: 'primary.200',
+                            }}
+                          >
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              {gene.gene}
+                            </Typography>
+                            <Typography variant="h6" color="primary.main">
+                              {(gene.importance * 100).toFixed(0)}%
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                      ))
+                    ) : (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                          Gene importance data not available in demo mode. Upload omics data for detailed gene analysis.
+                        </Typography>
                       </Grid>
-                    ))}
+                    )}
                   </Grid>
                 </Paper>
               </Grid>

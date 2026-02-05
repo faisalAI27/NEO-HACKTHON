@@ -5,6 +5,18 @@ import { PredictionRequest, PredictionResult, HealthStatus } from '../types'
 const API_BASE = '/api'
 const WSI_BASE = '/wsi'
 
+/**
+ * Cancer detection result type
+ */
+export interface CancerDetectionResult {
+  slide_id: string;
+  is_cancerous: boolean;
+  confidence: number;
+  cancer_type?: string;
+  tumor_regions?: number;
+  analysis_time_seconds: number;
+}
+
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE,
@@ -26,6 +38,67 @@ export async function getHealthStatus(): Promise<HealthStatus> {
  */
 export async function predict(request: PredictionRequest): Promise<PredictionResult> {
   const response = await api.post<PredictionResult>('/predict', request)
+  return response.data
+}
+
+/**
+ * Analyze WSI for cancer detection (Stage 1)
+ */
+export async function detectCancer(slideId: string): Promise<CancerDetectionResult> {
+  const response = await api.post<CancerDetectionResult>('/analyze/cancer-detection', { slide_id: slideId })
+  return response.data
+}
+
+/**
+ * Upload response type
+ */
+export interface UploadResponse {
+  status: string;
+  slide_id: string;
+  filename: string;
+  size_bytes: number;
+  size_mb: number;
+  path: string;
+}
+
+/**
+ * Upload a WSI file with progress tracking
+ */
+export async function uploadWSIFile(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<UploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await axios.post<UploadResponse>(`${API_BASE}/upload/wsi`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress: (progressEvent) => {
+      if (progressEvent.total && onProgress) {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        onProgress(percentCompleted)
+      }
+    },
+  })
+
+  return response.data
+}
+
+/**
+ * Check upload status for a slide
+ */
+export async function getUploadStatus(slideId: string): Promise<{ exists: boolean; slide_id: string; size_mb?: number }> {
+  const response = await api.get(`/upload/status/${slideId}`)
+  return response.data
+}
+
+/**
+ * List uploaded files
+ */
+export async function listUploadedFiles(): Promise<{ files: Array<{ slide_id: string; filename: string; size_mb: number }> }> {
+  const response = await api.get('/upload/list')
   return response.data
 }
 

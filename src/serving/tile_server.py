@@ -45,6 +45,7 @@ class WSITileServer:
     def __init__(
         self, 
         wsi_directory: str = "data/raw/svs",
+        upload_directory: str = "data/uploads",
         cache_size: int = 1000,
         tile_size: int = 256,
         overlap: int = 1
@@ -54,6 +55,7 @@ class WSITileServer:
         
         Args:
             wsi_directory: Directory containing SVS/WSI files
+            upload_directory: Directory containing uploaded WSI files
             cache_size: Number of tiles to cache in memory
             tile_size: Size of each tile in pixels
             overlap: Overlap between adjacent tiles
@@ -65,6 +67,7 @@ class WSITileServer:
             )
         
         self.wsi_directory = Path(wsi_directory)
+        self.upload_directory = Path(upload_directory)
         self.tile_size = tile_size
         self.overlap = overlap
         self.cache_size = cache_size
@@ -75,7 +78,7 @@ class WSITileServer:
         # LRU cache for tiles
         self._get_tile_cached = lru_cache(maxsize=cache_size)(self._get_tile_impl)
         
-        logger.info(f"WSI Tile Server initialized. Directory: {self.wsi_directory}")
+        logger.info(f"WSI Tile Server initialized. Directories: {self.wsi_directory}, {self.upload_directory}")
     
     def _find_slide_path(self, slide_id: str) -> Optional[Path]:
         """
@@ -90,22 +93,29 @@ class WSITileServer:
         # Common WSI extensions
         extensions = ['.svs', '.tif', '.tiff', '.ndpi', '.vms', '.vmu', '.scn', '.mrxs']
         
-        # Check if slide_id already has extension
-        slide_path = self.wsi_directory / slide_id
-        if slide_path.exists():
-            return slide_path
+        # Search in both wsi_directory and upload_directory
+        search_dirs = [self.wsi_directory, self.upload_directory]
         
-        # Try with common extensions
-        for ext in extensions:
-            candidate = self.wsi_directory / f"{slide_id}{ext}"
-            if candidate.exists():
-                return candidate
-        
-        # Search recursively
-        for ext in extensions:
-            matches = list(self.wsi_directory.rglob(f"*{slide_id}*{ext}"))
-            if matches:
-                return matches[0]
+        for search_dir in search_dirs:
+            if not search_dir.exists():
+                continue
+                
+            # Check if slide_id already has extension
+            slide_path = search_dir / slide_id
+            if slide_path.exists():
+                return slide_path
+            
+            # Try with common extensions
+            for ext in extensions:
+                candidate = search_dir / f"{slide_id}{ext}"
+                if candidate.exists():
+                    return candidate
+            
+            # Search recursively
+            for ext in extensions:
+                matches = list(search_dir.rglob(f"*{slide_id}*{ext}"))
+                if matches:
+                    return matches[0]
         
         return None
     
@@ -298,14 +308,22 @@ class WSITileServer:
         extensions = ['*.svs', '*.tif', '*.tiff', '*.ndpi', '*.vms', '*.scn', '*.mrxs']
         slides = []
         
-        for ext in extensions:
-            for path in self.wsi_directory.rglob(ext):
-                slides.append(path.stem)
+        # Search in both directories
+        search_dirs = [self.wsi_directory, self.upload_directory]
+        
+        for search_dir in search_dirs:
+            if not search_dir.exists():
+                continue
+            for ext in extensions:
+                for path in search_dir.rglob(ext):
+                    slides.append(path.stem)
         
         return sorted(set(slides))
     
     def close(self):
         """Close all open slides."""
+        if not hasattr(self, '_slide_cache'):
+            return
         for slide_id, (slide, _) in self._slide_cache.items():
             try:
                 slide.close()
@@ -316,19 +334,21 @@ class WSITileServer:
     
     def __del__(self):
         """Cleanup on deletion."""
-        self.close()
+        if hasattr(self, '_slide_cache'):
+            self.close()
 
 
 # Singleton instance for FastAPI
 _tile_server_instance: Optional[WSITileServer] = None
 
 
-def get_tile_server(wsi_directory: str = "data/raw/svs") -> WSITileServer:
+def get_tile_server(wsi_directory: str = "data/raw/svs", upload_directory: str = "data/uploads") -> WSITileServer:
     """
     Get or create the global tile server instance.
     
     Args:
         wsi_directory: Directory containing WSI files
+        upload_directory: Directory containing uploaded WSI files
         
     Returns:
         WSITileServer instance
@@ -337,7 +357,10 @@ def get_tile_server(wsi_directory: str = "data/raw/svs") -> WSITileServer:
     
     if _tile_server_instance is None:
         try:
-            _tile_server_instance = WSITileServer(wsi_directory=wsi_directory)
+            _tile_server_instance = WSITileServer(
+                wsi_directory=wsi_directory,
+                upload_directory=upload_directory
+            )
         except ImportError as e:
             logger.warning(f"WSI Tile Server unavailable: {e}")
             return None

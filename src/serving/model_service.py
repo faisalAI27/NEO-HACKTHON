@@ -34,12 +34,13 @@ class MOSAICModelService:
         result = service.predict_survival(patient_data)
     """
     
-    def __init__(self, device: Optional[str] = None):
+    def __init__(self, device: Optional[str] = None, demo_mode: bool = True):
         """
         Initialize the model service.
         
         Args:
             device: Device to run inference on ('cuda', 'cpu', or None for auto-detect)
+            demo_mode: If True, allow simulated predictions when no model is loaded
         """
         if device is None:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -49,6 +50,7 @@ class MOSAICModelService:
         self.model: Optional[MOSAICTrainer] = None
         self.checkpoint_path: Optional[str] = None
         self.is_loaded = False
+        self.demo_mode = demo_mode
         
         logger.info(f"MOSAICModelService initialized on device: {self.device}")
     
@@ -95,6 +97,81 @@ class MOSAICModelService:
             logger.error(f"Failed to load checkpoint: {e}")
             return False
     
+    def _generate_demo_prediction(
+        self, 
+        patient_data: Dict[str, Any],
+        time_points: Optional[List[float]] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate a simulated prediction for demo purposes when no model is loaded.
+        
+        Args:
+            patient_data: Dictionary containing patient modality data
+            time_points: Optional list of time points for survival curve
+            
+        Returns:
+            Dictionary with simulated prediction results
+        """
+        import random
+        
+        logger.info("Generating demo prediction (no model loaded)")
+        
+        if time_points is None:
+            time_points = [365, 730, 1095, 1825, 3650]  # 1, 2, 3, 5, 10 years
+        
+        # Generate a random risk score based on clinical data if available
+        risk_value = random.uniform(-1.0, 1.0)
+        
+        # Adjust based on clinical features if present
+        clinical = patient_data.get('clinical')
+        if clinical is not None:
+            if isinstance(clinical, np.ndarray) and len(clinical) > 0:
+                # Use age as a rough risk modifier
+                age_factor = (clinical[0] - 50) / 50 if clinical[0] > 0 else 0
+                risk_value += age_factor * 0.3
+        
+        risk_value = float(np.clip(risk_value, -2, 2))
+        
+        # Generate survival probabilities
+        baseline_hazard = 0.001
+        survival_probs = []
+        for t in time_points:
+            surv_prob = np.exp(-np.exp(risk_value) * baseline_hazard * t)
+            survival_probs.append(float(np.clip(surv_prob, 0.01, 0.99)))
+        
+        # Risk stratification
+        if risk_value > 0.5:
+            risk_group = 'high'
+        elif risk_value > -0.5:
+            risk_group = 'medium'
+        else:
+            risk_group = 'low'
+        
+        return {
+            'risk_score': risk_value,
+            'survival_probability': dict(zip(time_points, survival_probs)),
+            'risk_group': risk_group,
+            'model_checkpoint': 'DEMO_MODE (no model loaded)'
+        }
+    
+    def _generate_demo_attention(self, patient_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate simulated attention maps for demo mode."""
+        import random
+        
+        modalities = list(patient_data.keys())
+        
+        # Generate random modality importance
+        importance = {mod: random.uniform(0.1, 1.0) for mod in modalities}
+        total = sum(importance.values())
+        importance = {k: v / total for k, v in importance.items()}
+        
+        return {
+            'cross_modal': None,
+            'intra_modal': None,
+            'modality_importance': importance,
+            'demo_mode': True
+        }
+
     def load_best_checkpoint(self, checkpoints_dir: str = "checkpoints", fold: int = 0) -> bool:
         """
         Automatically find and load the best checkpoint from training.
@@ -198,6 +275,8 @@ class MOSAICModelService:
                 - risk_group: Risk stratification ('high', 'medium', 'low')
         """
         if not self.is_loaded:
+            if self.demo_mode:
+                return self._generate_demo_prediction(patient_data, time_points)
             raise RuntimeError("Model not loaded. Call load_checkpoint() first.")
         
         # Prepare inputs
@@ -259,6 +338,15 @@ class MOSAICModelService:
                 - modality_importance: Aggregated importance per modality
         """
         if not self.is_loaded:
+            if self.demo_mode:
+                demo_pred = self._generate_demo_prediction(patient_data)
+                demo_attn = self._generate_demo_attention(patient_data)
+                return {
+                    'risk_score': demo_pred['risk_score'],
+                    'risk_group': demo_pred['risk_group'],
+                    'survival_probability': demo_pred['survival_probability'],
+                    'attention': demo_attn
+                }
             raise RuntimeError("Model not loaded. Call load_checkpoint() first.")
         
         # Prepare inputs

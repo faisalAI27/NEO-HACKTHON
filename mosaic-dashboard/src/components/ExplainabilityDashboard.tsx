@@ -24,8 +24,8 @@ interface GeneImportance {
 }
 
 interface ExplainabilityDashboardProps {
-  attentionWeights: Record<string, number>;
-  geneImportance: GeneImportance[];
+  attentionWeights?: Record<string, number>;
+  geneImportance?: GeneImportance[];
   detailed?: boolean;
 }
 
@@ -66,12 +66,21 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function ExplainabilityDashboard({
-  attentionWeights,
-  geneImportance,
+  attentionWeights = {},
+  geneImportance = [],
   detailed = false,
 }: ExplainabilityDashboardProps) {
   // Process modality data for charts
   const modalityData = useMemo(() => {
+    if (!attentionWeights || Object.keys(attentionWeights).length === 0) {
+      // Return demo data if no attention weights provided
+      return [
+        { modality: 'Clinical', key: 'clinical', importance: 0.25, color: '#3182ce', icon: '🏥' },
+        { modality: 'Transcriptomics', key: 'rna', importance: 0.30, color: '#38a169', icon: '🧬' },
+        { modality: 'Pathology', key: 'wsi', importance: 0.25, color: '#e53e3e', icon: '🔍' },
+        { modality: 'Mutations', key: 'mutations', importance: 0.20, color: '#ed8936', icon: '⚡' },
+      ];
+    }
     return Object.entries(attentionWeights).map(([modality, weight]) => ({
       modality: modality.charAt(0).toUpperCase() + modality.slice(1),
       key: modality,
