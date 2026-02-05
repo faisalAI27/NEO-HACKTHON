@@ -58,12 +58,12 @@ RUN pip install --no-cache-dir openslide-python
 COPY src/ ./src/
 COPY configs/ ./configs/
 
-# Copy model checkpoints (if available during build)
-# In production, these might be mounted as volumes
-COPY checkpoints/ ./checkpoints/
+# Create directories for data and checkpoints (to be mounted in production)
+RUN mkdir -p data/raw data/processed outputs checkpoints
 
-# Create directories for data (to be mounted)
-RUN mkdir -p data/raw data/processed outputs
+# Copy model checkpoints if available (optional - will be mounted in production)
+# Note: checkpoints directory is created above, volumes can override it
+COPY --chown=root:root configs/ ./configs/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
